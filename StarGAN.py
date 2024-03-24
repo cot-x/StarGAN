@@ -284,12 +284,10 @@ class Util:
 
 class Solver:
     def __init__(self, args):
-        use_cuda = torch.cuda.is_available() if not args.cpu else False
-        self.device = torch.device("cuda" if use_cuda else "cpu")
-        self.dtype = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
-        self.itype = torch.cuda.LongTensor if use_cuda else torch.LongTensor
-        torch.backends.cudnn.benchmark = True
-        print(f'Use Device: {self.device}')
+        has_cuda = torch.cuda.is_available() if not args.cpu else False
+        self.device = torch.device("cuda" if has_cuda else "cpu")
+        self.dtype = torch.cuda.FloatTensor if has_cuda else torch.FloatTensor
+        self.itype = torch.cuda.LongTensor if has_cuda else torch.LongTensor
         
         self.args = args
         self.num_channel = 3
@@ -335,11 +333,13 @@ class Solver:
             dump(self, f)
     
     @staticmethod
-    def load_resume(self):
-        if os.path.exists('resume.pkl'):
+    def load(args, resume=True):
+        if resume and os.path.exists('resume.pkl'):
             with open(os.path.join('.', 'resume.pkl'), 'rb') as f:
                 print('Load resume.')
-                return load(f)
+                solver = load(f)
+                solver.args = args
+                return solver
         else:
             return Solver(args)
         
@@ -438,6 +438,9 @@ class Solver:
         return out
     
     def train(self, resume=True):
+        print(f'Use Device: {self.device}')
+        torch.backends.cudnn.benchmark = True
+        
         self.netG.train()
         self.netD.train()
         
@@ -514,13 +517,8 @@ class Solver:
 # In[ ]:
 
 
-def main(args):    
-    if args.noresume:
-        solver = Solver(args)
-    else:
-        solver = Solver.load_resume(args)
-        solver.args = args
-    
+def main(args):
+    solver = Solver.load(args, resume=not args.noresume)
     solver.load_state()
         
     if args.generate > 0:
@@ -543,7 +541,7 @@ if __name__ == '__main__':
     parser.add_argument('--lr', type=float, default=0.0001)
     parser.add_argument('--mul_lr_dis', type=float, default=4)
     parser.add_argument('--num_epochs', type=int, default=100)
-    parser.add_argument('--batch_size', type=int, default=256)
+    parser.add_argument('--batch_size', type=int, default=1)
     parser.add_argument('--lambda_cls', type=float, default=1)
     parser.add_argument('--lambda_recon', type=float, default=10)
     #parser.add_argument('--aug_threshold', type=float, default=0.6)
@@ -553,7 +551,6 @@ if __name__ == '__main__':
     parser.add_argument('--noresume', action='store_true')
 
     args, unknown = parser.parse_known_args()
-    args.noresume = True # Debug
     
     if not os.path.exists(args.result_dir):
         os.mkdir(args.result_dir)
