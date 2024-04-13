@@ -255,7 +255,7 @@ class Util:
         imgs = ImageFolder(folder_path, transform=transforms.Compose([
             transforms.Resize(int(size)),
             transforms.RandomCrop(size),
-            transforms.RandomHorizontalFlip(),
+            #transforms.RandomHorizontalFlip(),
             #transforms.RandomRotation(degrees=30),
             #transforms.RandomPerspective(),
             #transforms.ColorJitter(brightness=0, contrast=0.5, saturation=0.5),
