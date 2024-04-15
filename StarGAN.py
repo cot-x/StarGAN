@@ -102,6 +102,58 @@ class SelfAttention(nn.Module):
 # In[ ]:
 
 
+class ResidualBlock(nn.Module):
+    def __init__(self, in_features):
+        super().__init__()
+
+        self.shortcut = nn.Sequential()
+        #self.residual = nn.Sequential(
+        #    nn.Conv2d(in_features, in_features, kernel_size=3, stride=1, padding=1),
+        #    nn.BatchNorm2d(in_features),
+        #    nn.ReLU(inplace=True),
+        #    nn.Conv2d(in_features, in_features, kernel_size=3, stride=1, padding=1),
+        #    nn.BatchNorm2d(in_features)
+        #)
+        self.residual = nn.Sequential(
+            nn.ReflectionPad2d(1),
+            nn.Conv2d(in_features, in_features, kernel_size=3, stride=1, padding=1),
+            nn.InstanceNorm2d(in_features),
+            nn.ReLU(inplace=True),
+            nn.ReflectionPad2d(1),
+            nn.Conv2d(in_features, in_features, kernel_size=3, stride=1, padding=1),
+            nn.InstanceNorm2d(in_features)
+        )
+
+    def forward(self, x):
+        shortcut = self.shortcut(x)
+        return F.relu(self.residual(x) + shortcut)
+
+
+# In[ ]:
+
+
+class SEBlock(nn.Module):
+    def __init__(self, channel, reduction=16):
+        super().__init__()
+        
+        self.squeeze = nn.AdaptiveAvgPool2d(1)
+        self.excitation = nn.Sequential(
+            nn.Linear(channel, channel // reduction),
+            nn.ReLU(inplace=True),
+            nn.Linear(channel // reduction, channel),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        squeeze = self.squeeze(x)
+        squeeze = squeeze.view(squeeze.size(0), -1)
+        excitation = self.excitation(squeeze).view(x.size(0), x.size(1), 1, 1)
+        return F.relu(x * excitation.expand_as(x))
+
+
+# In[ ]:
+
+
 class ResidualSEBlock(nn.Module):
     def __init__(self, in_features, reduction=16):
         super().__init__()
